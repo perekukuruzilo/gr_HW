@@ -1,0 +1,90 @@
+from abc import ABC, abstractmethod
+from typing import Dict, List, Tuple
+
+
+class Graph(ABC):
+    # ... (init and _check_vertex remain the same) ...
+
+    def __init__(self, vertices: int, directed: bool = False, weighted: bool = False):
+        # ... (implementation remains the same) ...
+        if vertices < 0:
+            raise ValueError("vertices must be non-negative")
+        self.vertices = vertices
+        self.directed = directed
+        self.weighted = weighted
+        self._adjacency_list: Dict[int, List[Tuple[int, float]]] = {i: [] for i in range(vertices)}
+
+    def _check_vertex(self, v: int) -> None:
+        # ... (implementation remains the same) ...
+        if not (0 <= v < self.vertices):
+            raise IndexError(f"vertex {v} is out of range [0, {self.vertices - 1}]")
+
+    @abstractmethod
+    def add_edge(self, u: int, v: int, weight: float = 1.0) -> None:
+        # ... (implementation remains the same) ...
+        pass
+
+
+    #   GRAPH REPRESENTATIONS
+
+    def get_adjacency_list(self) -> Dict[int, List[Tuple[int, float]]]:
+        """Return the graph as an adjacency list: {v: [(u, weight), ...], ...}."""
+        # Создание глубокой копии и сортировка соседей по ID вершины
+        adj_list_copy = {}
+        for u, neighbors in self._adjacency_list.items():
+            # Копируем список и сортируем его по ID соседа (первый элемент кортежа)
+            sorted_neighbors = sorted(neighbors, key=lambda x: x[0])
+            adj_list_copy[u] = sorted_neighbors
+        return adj_list_copy
+
+
+    def get_adjacency_matrix(self) -> List[List[float]]:
+        """Return the adjacency matrix of size n x n (n = number of vertices)."""
+        n = self.vertices
+        # Инициализация матрицы нулями
+        matrix = [[0.0] * n for _ in range(n)]
+
+        for u in range(n):
+            for v, weight in self._adjacency_list[u]:
+                # Записываем вес (1.0 для невзвешенного, w для взвешенного)
+                matrix[u][v] = weight
+        return matrix
+
+
+    def get_incidence_matrix(self) -> List[List[int]]:
+        """Return the incidence matrix of size n x m (n = vertices, m = edges)."""
+        edges = []
+        for u in range(self.vertices):
+            for v, _ in self._adjacency_list[u]:
+                if self.directed:
+                    # Для направленного графа добавляем все рёбра (u, v)
+                    edges.append((u, v))
+                else:
+                    # Для ненаправленного графа добавляем рёбра только с u < v,
+                    # чтобы избежать дублирования {u, v} и {v, u}
+                    if u < v:
+                        edges.append((u, v))
+
+        # Сортировка рёбер для детерминированного порядка столбцов
+        if self.directed:
+            # Сортировка по (u, v)
+            edges.sort(key=lambda x: (x[0], x[1]))
+        else:
+            # Сортировка по (min(u, v), max(u, v))
+            edges.sort(key=lambda x: (x[0], x[1]))
+            
+        m = len(edges) # Количество рёбер
+        n = self.vertices
+        incidence_matrix = [[0] * m for _ in range(n)]
+
+        for col_idx, (u, v) in enumerate(edges):
+            if self.directed:
+                # Направленный: -1 в строке u (источник), +1 в строке v (цель)
+                incidence_matrix[u][col_idx] = -1
+                incidence_matrix[v][col_idx] = 1
+            else:
+                # Ненаправленный: +1 в строках u и v
+                incidence_matrix[u][col_idx] = 1
+                incidence_matrix[v][col_idx] = 1
+
+        return incidence_matrix
